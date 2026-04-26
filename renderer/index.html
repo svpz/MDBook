@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com;" />
+  <title>MDBook — Markdown Library</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Merriweather:ital,wght@0,300;0,400;0,700;1,300;1,400&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="highlight.css" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- ── Custom title bar ── -->
+  <div id="titlebar">
+    <div id="titlebar-drag">
+      <span id="app-logo">📚</span>
+      <span id="app-name">MDBook</span>
+    </div>
+    <div id="titlebar-controls">
+      <button id="btn-settings" title="Settings (Ctrl+,)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      </button>
+      <button id="btn-minimize" title="Minimize">&#x2013;</button>
+      <button id="btn-maximize" title="Maximize">&#x25A1;</button>
+      <button id="btn-close"    title="Close">&#x2715;</button>
+    </div>
+  </div>
+
+  <!-- ── Main layout ── -->
+  <div id="app">
+
+    <!-- ── Sidebar ── -->
+    <aside id="sidebar">
+
+      <!-- Workspace Picker -->
+      <div id="workspace-picker" style="padding: 12px 14px 4px; border-bottom: 1px solid var(--border);">
+        <select id="workspace-select" class="settings-select" style="width: 100%; font-size: 12px; padding: 6px 20px 6px 8px; margin-bottom: 6px;"></select>
+        <button id="btn-new-workspace" class="action-btn" style="width: 100%; justify-content: center; margin-bottom: 6px;">+ New Workspace</button>
+      </div>
+
+      <!-- LIBRARY section -->
+      <div class="sidebar-section" id="section-library">
+        <div class="sidebar-section-header" id="library-section-toggle" data-target="library-section-body" title="Toggle Library">
+          <svg class="section-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+          <span class="section-label">Library</span>
+          <button id="btn-add-folder" title="Add folder">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+          </button>
+        </div>
+        <div class="sidebar-section-body" id="library-section-body">
+          <div id="search-wrap">
+            <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+            <input id="search-input" type="text" placeholder="Search notes…" autocomplete="off" />
+          </div>
+          <div id="file-tree"></div>
+        </div>
+      </div>
+
+      <!-- Sidebar footer -->
+      <div id="sidebar-footer">
+        <button id="btn-new-file">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+          New Note
+        </button>
+      </div>
+    </aside>
+
+    <!-- Resizer -->
+    <div id="sidebar-resizer"></div>
+
+    <!-- ── Main content ── -->
+    <main id="content">
+
+      <!-- Empty state -->
+      <div id="empty-state">
+        <div id="empty-icon">📖</div>
+        <h2>Your Markdown Library</h2>
+        <p>Add a folder containing <code>.md</code> files or create a new note.</p>
+        <button id="btn-empty-add">Add Folder</button>
+      </div>
+
+      <!-- Editor area -->
+      <div id="editor-area" class="hidden">
+
+        <div id="editor-topbar">
+          <div id="file-breadcrumb"></div>
+          <div id="editor-actions">
+            <button id="btn-toggle-mode" class="action-btn" title="Toggle view mode (Ctrl+E)">
+              <svg id="icon-edit" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+              <svg id="icon-view" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="hidden"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+              <span id="mode-label">Edit</span>
+            </button>
+            <button id="btn-save" class="action-btn primary" title="Save (Ctrl+S)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+              Save
+            </button>
+            <button id="btn-show-in-folder" class="action-btn" title="Show in Explorer">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+            </button>
+            <button id="btn-delete-file" class="action-btn danger" title="Delete">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Editor / Preview panels -->
+        <div id="panels">
+          <div id="editor-panel">
+            <textarea id="md-editor" spellcheck="true" placeholder="Start writing in Markdown…"></textarea>
+          </div>
+          <div id="preview-panel">
+            <article id="md-preview" class="markdown-body"></article>
+          </div>
+        </div>
+
+        <!-- Terminal resize handle (only visible when terminal open) -->
+        <div id="terminal-resizer" class="hidden"></div>
+
+        <!-- Terminal panel -->
+        <div id="terminal-panel" class="hidden">
+          <div id="terminal-header">
+            <div id="terminal-header-left">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+              <span id="terminal-cwd-label">Terminal</span>
+            </div>
+            <div id="terminal-header-right">
+              <button id="btn-terminal-clear" title="Clear terminal">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M3 6h18"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+              </button>
+              <button id="btn-terminal-close" title="Close terminal">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
+            </div>
+          </div>
+          <div id="terminal-output"></div>
+          <div id="terminal-input-row">
+            <span id="terminal-prompt-label">$</span>
+            <input id="terminal-input" type="text" autocomplete="off" spellcheck="false" placeholder="Type a command…" />
+          </div>
+        </div>
+
+        <!-- Status bar -->
+        <div id="statusbar">
+          <span id="status-words">0 words</span>
+          <span id="status-chars">0 chars</span>
+          <span id="status-modified"></span>
+          <span id="status-saved" class="hidden">✓ Saved</span>
+          <div id="statusbar-right">
+            <button id="btn-terminal-toggle" title="Toggle Terminal (Ctrl+`)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+              Terminal
+            </button>
+          </div>
+        </div>
+
+      </div><!-- /editor-area -->
+    </main>
+  </div>
+
+  <!-- Settings Modal -->
+  <div id="settings-overlay" class="hidden"></div>
+  <div id="settings-modal" class="hidden" role="dialog" aria-modal="true" aria-label="Settings">
+    <div id="settings-header">
+      <div id="settings-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        Settings
+      </div>
+      <button id="btn-settings-close" title="Close">&#x2715;</button>
+    </div>
+    <div id="settings-body">
+      <div class="settings-section">
+        <div class="settings-section-title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+          Save Location
+        </div>
+        <div class="settings-row">
+          <div class="settings-row-info">
+            <label class="settings-label">Default Save Folder</label>
+            <p class="settings-desc">New notes are created here. Leave empty to always be prompted.</p>
+          </div>
+          <div class="settings-folder-pick">
+            <div id="default-folder-display" class="folder-path-display"><span id="default-folder-text">Not set — will prompt each time</span></div>
+            <div class="folder-pick-actions">
+              <button id="btn-pick-folder" class="settings-btn primary">Browse…</button>
+              <button id="btn-clear-folder" class="settings-btn">Clear</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="settings-section">
+        <div class="settings-section-title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+          Appearance
+        </div>
+        <div class="settings-row">
+          <div class="settings-row-info"><label class="settings-label" for="setting-theme">App Theme</label><p class="settings-desc">Choose a built-in theme or customize.</p></div>
+          <div class="settings-control">
+            <select id="setting-theme" class="settings-select">
+              <option value="dark">Dark Theme</option>
+              <option value="light">Light Theme</option>
+              <option value="reader">Reader Theme</option>
+              <option value="custom">Custom CSS</option>
+            </select>
+          </div>
+        </div>
+        <div class="settings-row hidden" id="row-custom-css" style="flex-direction: column; align-items: stretch;">
+          <div class="settings-row-info" style="margin-bottom: 8px;"><label class="settings-label">Custom Theme CSS</label><p class="settings-desc">Override CSS variables inside <code>:root { ... }</code></p></div>
+          <textarea id="setting-custom-css" spellcheck="false" class="settings-textarea" placeholder=":root {&#10;  --bg-base: #000000;&#10;}" style="width: 100%; height: 120px; font-family: var(--font-mono); font-size: 12px; background: var(--bg-elevated); color: var(--text-code); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 8px; resize: vertical;"></textarea>
+        </div>
+      </div>
+      <div class="settings-section">
+
+        <div class="settings-section-title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          Editor
+        </div>
+        <div class="settings-row">
+          <div class="settings-row-info"><label class="settings-label" for="setting-fontsize">Editor Font Size</label><p class="settings-desc">Size in pixels for the monospace font.</p></div>
+          <div class="settings-control"><input id="setting-fontsize" type="number" class="settings-number" min="10" max="28" value="14" /><span class="settings-unit">px</span></div>
+        </div>
+        <div class="settings-row">
+          <div class="settings-row-info"><label class="settings-label" for="setting-wordwrap">Word Wrap</label><p class="settings-desc">Wrap long lines in the editor.</p></div>
+          <label class="toggle" for="setting-wordwrap"><input type="checkbox" id="setting-wordwrap" /><span class="toggle-track"><span class="toggle-thumb"></span></span></label>
+        </div>
+        <div class="settings-row">
+          <div class="settings-row-info"><label class="settings-label" for="setting-autosave">Auto Save</label><p class="settings-desc">Automatically save after each edit.</p></div>
+          <label class="toggle" for="setting-autosave"><input type="checkbox" id="setting-autosave" /><span class="toggle-track"><span class="toggle-thumb"></span></span></label>
+        </div>
+        <div class="settings-row" id="row-autosave-delay">
+          <div class="settings-row-info"><label class="settings-label" for="setting-autosave-delay">Auto Save Delay</label><p class="settings-desc">Milliseconds after last keystroke.</p></div>
+          <div class="settings-control"><input id="setting-autosave-delay" type="number" class="settings-number" min="500" max="10000" step="500" value="2000" /><span class="settings-unit">ms</span></div>
+        </div>
+      </div>
+      <div class="settings-section">
+        <div class="settings-section-title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+          Data &amp; Storage
+        </div>
+        <div class="settings-row">
+          <div class="settings-row-info"><label class="settings-label">App Data Location</label><p class="settings-desc">Where Folio stores its library index and settings.</p></div>
+          <div class="settings-control">
+            <div id="userData-path-display" class="folder-path-display small"><span>Loading…</span></div>
+            <button id="btn-open-userdata" class="settings-btn">Show in Explorer</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div id="settings-footer">
+      <span id="settings-save-status"></span>
+      <button id="btn-settings-save" class="settings-btn primary large">Save Settings</button>
+    </div>
+  </div>
+
+  <!-- Prompt Modal -->
+  <div id="prompt-overlay" class="hidden" style="position: fixed; inset: 0; background: rgba(0,0,0,0.55); backdrop-filter: blur(4px); z-index: 300;"></div>
+  <div id="prompt-modal" class="hidden" style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 320px; background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius-md); box-shadow: 0 8px 32px rgba(0,0,0,0.5); z-index: 301; display: flex; flex-direction: column; padding: 20px;">
+    <h3 id="prompt-title" style="margin-bottom: 12px; font-size: 14px; color: var(--text-primary);">Enter value</h3>
+    <input id="prompt-input" type="text" class="settings-textarea" style="width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg-elevated); color: var(--text-primary); margin-bottom: 16px;" />
+    <div style="display: flex; justify-content: flex-end; gap: 8px;">
+      <button id="btn-prompt-cancel" class="settings-btn" style="padding: 6px 12px; cursor: pointer;">Cancel</button>
+      <button id="btn-prompt-ok" class="settings-btn primary" style="padding: 6px 12px; cursor: pointer;">OK</button>
+    </div>
+  </div>
+
+  <div id="toast-container"></div>
+
+  <script src="highlight.min.js"></script>
+  <script src="marked.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

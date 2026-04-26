@@ -1,0 +1,32 @@
+{
+  "name": "mdbook",
+  "version": "1.0.0",
+  "description": "A beautiful Markdown library & viewer built with Electron",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --inspect",
+    "dist": "electron-builder --win"
+  },
+  "build": {
+    "appId": "com.mdbook.app",
+    "productName": "MDBook",
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "target": "nsis"
+    }
+  },
+  "keywords": [
+    "markdown",
+    "notes",
+    "electron"
+  ],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "electron": "^41.3.0",
+    "electron-builder": "^26.8.1"
+  }
+}
