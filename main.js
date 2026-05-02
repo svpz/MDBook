@@ -80,6 +80,7 @@ const DEFAULT_SETTINGS = {
   fontSize: 14,
   lineNumbers: false,
   wordWrap: true,
+  scrollSync: true,
 };
 
 function loadSettings() {
@@ -285,10 +286,83 @@ ipcMain.handle('file:delete', async (_, filePath) => {
   }
 });
 
+// ── IPC: Rename file ─────────────────────────────────────────────────────────
+ipcMain.handle('file:rename', async (_, oldPath, newName) => {
+  try {
+    const dir = path.dirname(oldPath);
+    const ext = path.extname(oldPath);
+    // Ensure extension
+    let targetName = newName;
+    if (!targetName.toLowerCase().endsWith('.md') && !targetName.toLowerCase().endsWith('.markdown')) {
+      targetName += ext || '.md';
+    }
+    const newPath = path.join(dir, targetName);
+    if (fs.existsSync(newPath)) {
+      throw new Error('File already exists');
+    }
+    fs.renameSync(oldPath, newPath);
+    return { success: true, newPath };
+  } catch (e) {
+    return { error: e.message };
+  }
+});
+
 // ── IPC: Open in OS file explorer ────────────────────────────────────────────
 ipcMain.handle('shell:showItemInFolder', (_, filePath) => {
   shell.showItemInFolder(filePath);
   return true;
+});
+
+// ── IPC: Export to PDF ────────────────────────────────────────────────────────
+ipcMain.handle('app:exportPDF', async (_, title) => {
+  const result = await dialog.showSaveDialog(mainWindow, {
+    defaultPath: title ? `${title}.pdf` : 'document.pdf',
+    filters: [{ name: 'PDF', extensions: ['pdf'] }],
+    title: 'Export to PDF',
+  });
+  if (result.canceled || !result.filePath) return null;
+
+  const options = {
+    marginsType: 0,
+    pageSize: 'A4',
+    printBackground: true,
+    printSelectionOnly: false,
+    landscape: false,
+  };
+
+  try {
+    const data = await mainWindow.webContents.printToPDF(options);
+    fs.writeFileSync(result.filePath, data);
+    return result.filePath;
+  } catch (e) {
+    throw new Error('PDF export failed: ' + e.message);
+  }
+});
+
+// ── IPC: Copy image to assets ────────────────────────────────────────────────
+ipcMain.handle('file:copyImage', async (_, sourcePath, notePath) => {
+  try {
+    const noteDir = path.dirname(notePath);
+    const assetsDir = path.join(noteDir, 'assets');
+    if (!fs.existsSync(assetsDir)) fs.mkdirSync(assetsDir, { recursive: true });
+
+    const ext = path.extname(sourcePath);
+    const base = path.basename(sourcePath, ext);
+    let targetName = base + ext;
+    let targetPath = path.join(assetsDir, targetName);
+    
+    // Avoid overwrite
+    let i = 1;
+    while (fs.existsSync(targetPath)) {
+      targetName = `${base}_${i++}${ext}`;
+      targetPath = path.join(assetsDir, targetName);
+    }
+
+    fs.copyFileSync(sourcePath, targetPath);
+    return { relPath: path.join('assets', targetName) };
+  } catch (e) {
+    return { error: e.message };
+  }
 });
 
 // ── IPC: Terminal ─────────────────────────────────────────────────────────────

@@ -1,6 +1,12 @@
-const { contextBridge, ipcRenderer } = require('electron');
+const { contextBridge, ipcRenderer, webUtils } = require('electron');
 
 contextBridge.exposeInMainWorld('electronAPI', {
+  // Helpers
+  getPathForFile: (file) => {
+    if (webUtils && webUtils.getPathForFile) return webUtils.getPathForFile(file);
+    return file.path;
+  },
+
   // Window controls
   minimize: () => ipcRenderer.send('window-minimize'),
   maximize: () => ipcRenderer.send('window-maximize'),
@@ -21,6 +27,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   saveFileAs:     (n, c) => ipcRenderer.invoke('file:saveAs', n, c),
   createFile:     (p) => ipcRenderer.invoke('file:create', p),
   deleteFile:     (p) => ipcRenderer.invoke('file:delete', p),
+  renameFile:     (p, n) => ipcRenderer.invoke('file:rename', p, n),
+  copyImage:      (s, n) => ipcRenderer.invoke('file:copyImage', s, n),
 
   // Shell
   showInFolder:   (p) => ipcRenderer.invoke('shell:showItemInFolder', p),
@@ -32,6 +40,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // App info
   getUserDataPath: () => ipcRenderer.invoke('app:getUserDataPath'),
+  exportPDF:       (t) => ipcRenderer.invoke('app:exportPDF', t),
 
   // Terminal
   termRun:         (data) => ipcRenderer.send('terminal:run', data),

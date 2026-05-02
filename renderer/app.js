@@ -15,6 +15,9 @@ const state = {
   termCwd: null,
   termHistory: [],
   termHistoryIdx: -1,
+  previewZoom: 1.0,
+  focusMode: false,
+  tocOpen: false,
 };
 
 // ── DOM refs ──────────────────────────────────────────────────
@@ -232,13 +235,16 @@ function renderTree() {
       <span class="folder-icon">📁</span>
       <span class="folder-name" title="${escapeHtml(folder.path)}">${escapeHtml(folder.name)}</span>
       <span class="folder-count">${count}</span>
+      <button class="folder-add-note" title="New note in this folder" data-path="${escapeHtml(folder.path)}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><path d="M12 5v14M5 12h14"/></svg>
+      </button>
       <button class="folder-remove" title="Remove from library" data-path="${escapeHtml(folder.path)}">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </button>`;
 
     // toggle collapse
     header.addEventListener('click', (e) => {
-      if (e.target.closest('.folder-remove')) return;
+      if (e.target.closest('.folder-remove') || e.target.closest('.folder-add-note')) return;
       if (collapsedSet.has(folder.path)) collapsedSet.delete(folder.path);
       else collapsedSet.add(folder.path);
       header.classList.toggle('collapsed');
@@ -249,6 +255,11 @@ function renderTree() {
     header.querySelector('.folder-remove').addEventListener('click', (e) => {
       e.stopPropagation();
       removeFolder(folder.path);
+    });
+
+    header.querySelector('.folder-add-note').addEventListener('click', (e) => {
+      e.stopPropagation();
+      newFile(folder.path);
     });
 
     const children = document.createElement('div');
@@ -305,7 +316,10 @@ function renderChildren(container, tree, folderPath, depth) {
       subHeader.innerHTML = `
         <svg class="folder-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
         <span class="folder-icon" style="font-size:12px">📂</span>
-        <span class="folder-name">${escapeHtml(item.name)}</span>`;
+        <span class="folder-name">${escapeHtml(item.name)}</span>
+        <button class="folder-add-note" title="New note in this folder" data-path="${escapeHtml(item.path)}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="10" height="10"><path d="M12 5v14M5 12h14"/></svg>
+        </button>`;
 
       const subChildren = document.createElement('div');
       subChildren.className = 'tree-children' + (isCollapsed ? ' collapsed' : '');
@@ -316,7 +330,8 @@ function renderChildren(container, tree, folderPath, depth) {
         else subChildren.style.maxHeight = '0px';
       });
 
-      subHeader.addEventListener('click', () => {
+      subHeader.addEventListener('click', (e) => {
+        if (e.target.closest('.folder-add-note')) return;
         if (collapsedSet.has(item.path)) collapsedSet.delete(item.path);
         else collapsedSet.add(item.path);
         subHeader.classList.toggle('collapsed');
@@ -325,6 +340,11 @@ function renderChildren(container, tree, folderPath, depth) {
           if (!collapsedSet.has(item.path)) subChildren.style.maxHeight = subChildren.scrollHeight + 'px';
           else subChildren.style.maxHeight = '0px';
         }, 10);
+      });
+
+      subHeader.querySelector('.folder-add-note').addEventListener('click', (e) => {
+        e.stopPropagation();
+        newFile(item.path);
       });
 
       container.appendChild(subHeader);
@@ -367,6 +387,33 @@ async function openFile(filePath, folderPath) {
 
   showEditorArea();
   highlightActiveFile(filePath);
+  if (state.tocOpen) renderTOC();
+}
+
+function renderTOC() {
+  const tocList = $('toc-list');
+  tocList.innerHTML = '';
+  
+  const headers = el.preview.querySelectorAll('h1, h2, h3, h4');
+  if (headers.length === 0) {
+    tocList.innerHTML = '<div class="tree-empty">No headers found</div>';
+    return;
+  }
+
+  headers.forEach((h, i) => {
+    const id = 'header-' + i;
+    h.id = id;
+    
+    const item = document.createElement('div');
+    item.className = `toc-item toc-${h.tagName.toLowerCase()}`;
+    item.textContent = h.textContent;
+    item.addEventListener('click', () => {
+      h.scrollIntoView({ behavior: 'smooth' });
+      document.querySelectorAll('.toc-item').forEach(it => it.classList.remove('active'));
+      item.classList.add('active');
+    });
+    tocList.appendChild(item);
+  });
 }
 
 function renderPreview(md) {
@@ -392,8 +439,31 @@ async function saveFile() {
   if (state.activeFile.folderPath) refreshFolder(state.activeFile.folderPath);
 }
 
-async function newFile() {
-  const folderPath = state.folders[0]?.path || null;
+async function renameFile() {
+  if (!state.activeFile) return;
+  const oldPath = state.activeFile.path;
+  const oldName = oldPath.split(/[\\/]/).pop().replace(/\.(md|markdown)$/i, '');
+  
+  const newName = await customPrompt('Rename file:', oldName);
+  if (!newName || newName === oldName) return;
+
+  const result = await API.renameFile(oldPath, newName);
+  if (result.error) {
+    toast('Rename failed: ' + result.error, 'error');
+    return;
+  }
+
+  const folderPath = state.activeFile.folderPath;
+  state.activeFile.path = result.newPath;
+  
+  updateBreadcrumb(result.newPath);
+  if (folderPath) await refreshFolder(folderPath);
+  highlightActiveFile(result.newPath);
+  toast('File renamed', 'success');
+}
+
+async function newFile(specificFolderPath = null) {
+  const folderPath = specificFolderPath || state.folders[0]?.path || null;
   const filePath = await API.createFile(folderPath);
   if (!filePath) return;
   // figure out which library folder this belongs to
@@ -437,6 +507,29 @@ function applyMode() {
     el.iconEdit.classList.add('hidden');
     el.iconView.classList.remove('hidden');
   }
+}
+
+function toggleFocusMode(force) {
+  state.focusMode = typeof force === 'boolean' ? force : !state.focusMode;
+  document.body.classList.toggle('focus-mode', state.focusMode);
+  if (state.focusMode) toast('Focus Mode active (F11 or Esc to exit)', 'info');
+}
+
+function toggleTOC(force) {
+  state.tocOpen = typeof force === 'boolean' ? force : !state.tocOpen;
+  $('toc-panel').classList.toggle('hidden', !state.tocOpen);
+  if (state.tocOpen) renderTOC();
+}
+
+async function exportToPDF() {
+  if (!state.activeFile) return;
+  const fileName = state.activeFile.path.split(/[\\/]/).pop().replace(/\.md$/i, '');
+  
+  // temporarily hide scrollbars for clean export if possible? 
+  // Electron printToPDF handles this mostly.
+  toast('Generating PDF...', 'info');
+  const savedPath = await API.exportPDF(fileName);
+  if (savedPath) toast('Exported to: ' + savedPath, 'success');
 }
 
 // ── UI helpers ────────────────────────────────────────────────
@@ -521,6 +614,7 @@ $('btn-save').addEventListener('click', saveFile);
 $('btn-show-in-folder').addEventListener('click', () => {
   if (state.activeFile) API.showInFolder(state.activeFile.path);
 });
+$('btn-rename-file').addEventListener('click', renameFile);
 $('btn-delete-file').addEventListener('click', async () => {
   if (!state.activeFile) return;
   const deleted = await API.deleteFile(state.activeFile.path);
@@ -534,6 +628,46 @@ $('btn-delete-file').addEventListener('click', async () => {
   }
 });
 
+$('btn-focus-mode').addEventListener('click', () => toggleFocusMode());
+$('btn-exit-focus').addEventListener('click', () => toggleFocusMode(false));
+$('btn-export-pdf').addEventListener('click', exportToPDF);
+$('btn-toc-toggle').addEventListener('click', () => toggleTOC());
+$('btn-toc-close').addEventListener('click', () => toggleTOC(false));
+$('btn-exit-toc-focus').addEventListener('click', () => toggleTOC());
+
+// Image Drag & Drop
+el.editor.addEventListener('dragover', (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+});
+el.editor.addEventListener('drop', async (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+
+  if (!state.activeFile) return;
+
+  const files = e.dataTransfer.files;
+  if (files.length === 0) return;
+
+  for (const file of files) {
+    if (file.type.startsWith('image/')) {
+      const filePath = API.getPathForFile(file);
+      const result = await API.copyImage(filePath, state.activeFile.path);
+      if (result.error) {
+        toast('Image copy failed: ' + result.error, 'error');
+      } else {
+        const markdown = `\n![${file.name}](${result.relPath})\n`;
+        const start = el.editor.selectionStart;
+        const end = el.editor.selectionEnd;
+        const val = el.editor.value;
+        el.editor.value = val.substring(0, start) + markdown + val.substring(end);
+        el.editor.dispatchEvent(new Event('input'));
+        toast('Image added', 'success');
+      }
+    }
+  }
+});
+
 // Editor input — live preview + status + auto-save
 let previewTimer;
 let autoSaveTimer;
@@ -542,13 +676,35 @@ el.editor.addEventListener('input', () => {
   updateBreadcrumb(state.activeFile?.path || '');
   updateStatus(el.editor.value, null);
   clearTimeout(previewTimer);
-  previewTimer = setTimeout(() => renderPreview(el.editor.value), 150);
+  previewTimer = setTimeout(() => {
+    renderPreview(el.editor.value);
+    if (state.tocOpen) renderTOC();
+  }, 150);
 
   // Auto-save
   if (state.settings.autoSave && state.activeFile) {
     clearTimeout(autoSaveTimer);
     autoSaveTimer = setTimeout(saveFile, state.settings.autoSaveDelay || 2000);
   }
+});
+
+// ── Scroll Sync ──────────────────────────────────────────────
+let isSyncingScroll = false;
+
+el.editor.addEventListener('scroll', () => {
+  if (!state.settings.scrollSync || isSyncingScroll || state.mode !== 'split') return;
+  isSyncingScroll = true;
+  const percentage = el.editor.scrollTop / (el.editor.scrollHeight - el.editor.clientHeight);
+  el.previewPanel.scrollTop = percentage * (el.previewPanel.scrollHeight - el.previewPanel.clientHeight);
+  setTimeout(() => { isSyncingScroll = false; }, 50);
+});
+
+el.previewPanel.addEventListener('scroll', () => {
+  if (!state.settings.scrollSync || isSyncingScroll || state.mode !== 'split') return;
+  isSyncingScroll = true;
+  const percentage = el.previewPanel.scrollTop / (el.previewPanel.scrollHeight - el.previewPanel.clientHeight);
+  el.editor.scrollTop = percentage * (el.editor.scrollHeight - el.editor.clientHeight);
+  setTimeout(() => { isSyncingScroll = false; }, 50);
 });
 
 // Search
@@ -573,8 +729,50 @@ document.addEventListener('keydown', (e) => {
   }
   if (e.key === 'Escape') {
     closeSettings();
+    if (state.focusMode) toggleFocusMode(false);
+  }
+  if (e.key === 'F11') {
+    e.preventDefault();
+    toggleFocusMode();
+  }
+  if ((e.ctrlKey || e.metaKey) && e.key === 't') {
+    e.preventDefault();
+    toggleTOC();
+  }
+
+  // Zoom shortcuts (Preview only or global?)
+  if ((e.ctrlKey || e.metaKey) && (e.key === '=' || e.key === '+')) {
+    e.preventDefault();
+    updateZoom(0.1);
+  }
+  if ((e.ctrlKey || e.metaKey) && e.key === '-') {
+    e.preventDefault();
+    updateZoom(-0.1);
+  }
+  if ((e.ctrlKey || e.metaKey) && e.key === '0') {
+    e.preventDefault();
+    state.previewZoom = 1.0;
+    applyZoom();
   }
 });
+
+function updateZoom(delta) {
+  state.previewZoom = Math.min(3.0, Math.max(0.5, state.previewZoom + delta));
+  applyZoom();
+}
+
+function applyZoom() {
+  const fontSize = 16 * state.previewZoom;
+  document.documentElement.style.setProperty('--preview-font-size', fontSize + 'px');
+}
+
+// Wheel zoom
+el.previewPanel.addEventListener('wheel', (e) => {
+  if (e.ctrlKey || e.metaKey) {
+    e.preventDefault();
+    updateZoom(e.deltaY < 0 ? 0.1 : -0.1);
+  }
+}, { passive: false });
 
 // Sidebar resize
 const resizer = $('sidebar-resizer');
@@ -644,6 +842,7 @@ async function openSettings() {
   $('setting-autosave').checked     = !!pendingSettings.autoSave;
   $('setting-autosave-delay').value = pendingSettings.autoSaveDelay ?? 2000;
   updateAutoSaveDelayRow();
+  $('setting-scrollsync').checked   = pendingSettings.scrollSync !== false;
   updateFolderDisplay(pendingSettings.defaultSaveFolder || '');
 
   // Show userData path
@@ -732,6 +931,7 @@ $('btn-settings-save').addEventListener('click', async () => {
   pendingSettings.wordWrap       = $('setting-wordwrap').checked;
   pendingSettings.autoSave       = $('setting-autosave').checked;
   pendingSettings.autoSaveDelay  = parseInt($('setting-autosave-delay').value, 10) || 2000;
+  pendingSettings.scrollSync     = $('setting-scrollsync').checked;
   // defaultSaveFolder already updated by Browse/Clear buttons
 
   state.settings = await API.setSettings(pendingSettings);
